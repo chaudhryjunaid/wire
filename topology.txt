@@ -1,0 +1,23 @@
+#	  	         ====================================================
+# 			   THIS IS THE FILE IN WHICH YOU STORE THE TOPOLOGY
+#		         ====================================================
+
+# Please note:
+# First of all you input the topology.
+# (Empty Lines will be ignored, 
+# Comments can be made by prefixing a line with #.)
+
+
+# 					TOPOLOGY TABLE 
+
+#	       =======================================================         ==========
+#		Node  Neigh/Weigh Neigh/Weigh Neigh/Weigh Neigh/Weigh
+		 0       1  1        2  10   	                   	   .	# node 1
+		 1       0  1	     3  20	 4  2    		   .	# node 2
+		 2       3  2        0  10     	                           .	# node 3
+		 3       2  2 	     1  20       4  3                      .	# node 4
+		 4	 3  3	     1  2  	                           .	# node 5 
+#    	       ========================================================        ==========
+# This is the end of the Topology.
+# This topology file serves to declare the network and link weights as they should be.
+#

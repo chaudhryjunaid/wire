@@ -1,0 +1,15 @@
+Following are (as of yet) incomplete instructions on how to compile and install
+the Wire for Linux/UNIX.
+
+1. Compile using
+	make depend
+	make
+2. Make sure the topology.txt file is to your liking
+
+3. Bring the system up by running server first and then client multiple times
+with relevant arguments (not described; see source):
+	./server
+	./client
+5. Installing Wire
+       make install
+   Note: This is equivalent to the simple make instruction. Since this is only a system for demonstration, it is not installed to any system location, but only powered up from its current directory.
