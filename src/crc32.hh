@@ -6,6 +6,7 @@
 // copied from a website, not created by authors
 // if you are the owner of this code, please write to us so that your copyright notice can be added
 //
+
 #ifndef CRC32_HH_
 #define CRC32_HH_
 

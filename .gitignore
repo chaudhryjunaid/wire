@@ -26,3 +26,20 @@
 *.exe
 *.out
 *.app
+
+# KDE IDE Files
+apidocs
+.kdev4
+build
+*~
+*.orig
+*.rej
+doxygen.log
+Doxyfile
+*.kdevelop
+*.kdevelop.filelist
+*.kdevelop.pcs
+*.kdevses
+.*kate-swp
+build/
+
