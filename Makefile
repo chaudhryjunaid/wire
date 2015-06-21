@@ -1,6 +1,6 @@
-##############################
-# EDS makefile - version 0.1 #
-##############################
+###############################
+# Wire Makefile - version 0.1 #
+###############################
 
 #
 #.SILENT:
@@ -35,8 +35,8 @@ CXX_OPTIONS =  -Wall # -ggdb #-time #-ftime-report
 GLOBALDEPS =
 
 # the object files the project uses
-SERVEROBJS = server.o log.o externals.o udp.o error.o link.o datalink.o hdlcframe.o crc32.o network.o fileparser.o
-CLIENTOBJS = client.o log.o externals.o udp.o error.o link.o datalink.o hdlcframe.o crc32.o network.o fileparser.o
+SERVEROBJS = src/server.o src/log.o src/externals.o src/udp.o src/error.o src/link.o src/datalink.o src/hdlcframe.o src/crc32.o src/network.o src/fileparser.o
+CLIENTOBJS = src/client.o src/log.o src/externals.o src/udp.o src/error.o src/link.o src/datalink.o src/hdlcframe.o src/crc32.o src/network.o src/fileparser.o
 
 # devlopment options
 CXXFLAGS = -I$(INCLUDE_PATHS) $(DEFS) $(CXX_OPTIONS)
@@ -51,8 +51,8 @@ all: server client
 	@echo '************* Compilation Done ************'
 
 # update dependency list
-depend: *.cc *.hh
-	g++ -MM *.cc > deplist.mk
+deplist.mk: src/*.cc src/*.hh
+	g++ -MM src/*.cc > deplist.mk
 
 server: $(GLOBALDEPS) $(SERVEROBJS)
 	$(CXX) $(CXXFLAGS) $(LIBFLAGS) $(SERVEROBJS)  -o server 
@@ -66,15 +66,15 @@ run: client
 	@echo 'make: Client finished at' `date`
 
 clean:
-	rm -rf *.o
-	rm -rf *.log
+	rm -f src/*.o
+	rm -f src/*.log
 
 distclean: clean
-	rm -rf server client
+	rm -f server client
 
 clobber: distclean		#remove all project files except source source and makefiles
-	rm -rf *~		# delete backup files too
-	rm -rf \#*		# delete autosave files too
+	rm -f src/*~		# delete backup files too
+	rm -f src/\#*		# delete autosave files too
 
 install: all
 
