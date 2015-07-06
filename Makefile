@@ -51,10 +51,10 @@ all: server client
 	@echo '************* Compilation Done ************'
 
 server: $(GLOBALDEPS) $(SERVEROBJS)
-	$(CXX) $(CXXFLAGS) $(LIBFLAGS) $(SERVEROBJS)  -o bin/server 
+	mkdir -p bin && $(CXX) $(CXXFLAGS) $(LIBFLAGS) $(SERVEROBJS)  -o bin/server 
 
 client: $(GLOBALDEPS) $(CLIENTOBJS)
-	$(CXX) $(CXXFLAGS) $(LIBFLAGS) $(CLIENTOBJS) -o bin/client
+	mkdir -p bin && $(CXX) $(CXXFLAGS) $(LIBFLAGS) $(CLIENTOBJS) -o bin/client
 
 clean:
 	rm -f src/*.o
