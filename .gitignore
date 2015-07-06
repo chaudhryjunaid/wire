@@ -43,3 +43,7 @@ Doxyfile
 .*kate-swp
 build/
 
+# Eclipse IDE Files
+.cproject
+.project
+
