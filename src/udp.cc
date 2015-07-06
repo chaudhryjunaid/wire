@@ -48,11 +48,10 @@ int Udpsocket::bind_socket(const char *host, const int port, const bool host_is_
     checkval( inet_aton(host,&host_addr_.sin_addr) ,0, Exception("bind_socket","inet_ntoa exception"));
     cout << host_addr_.sin_addr.s_addr << endl; 
     he = gethostbyaddr(&host_addr_.sin_addr,sizeof(in_addr),AF_INET); 
-    checkval( (int)he, 0, Exception("bind_socket","gethostbyaddr returned 0") );
+    checkval( (long)he, 0, Exception("bind_socket","gethostbyaddr returned 0") );
     dbglog( "Host name is: " << he->h_name );;
   } else {
     he  = gethostbyname(host);
-    checkval ( (int)he, 0, Exception("bind_socket","gethostbyname returned 0"));
     dbglog( "Host address is: " << inet_ntoa( *((in_addr*)he->h_addr) ) );
   }
 
@@ -76,11 +75,11 @@ int Udpsocket::fix_dest(const char *dest, const int port, const bool dest_is_add
   if (dest_is_addr){
     checkval( inet_aton(dest,&host_addr_.sin_addr) ,0, Exception("fix_dest","inet_ntoa exception"));
     he = gethostbyaddr(&host_addr_.sin_addr,sizeof(host_addr_.sin_addr),AF_INET); 
-    checkval( (int)he,0,Exception("fix_dest on gethostbyaddr",hstrerror(h_errno) ) );
+    checkval( (long)he,0,Exception("fix_dest on gethostbyaddr",hstrerror(h_errno) ) );
     dbglog( "Host name is: " << he->h_name);
   } else { 
     he=gethostbyname(dest);
-    checkval( (int)he, 0, Exception("fix_dest on gethostbyname",hstrerror(h_errno)) );
+    checkval( (long)he, 0, Exception("fix_dest on gethostbyname",hstrerror(h_errno)) );
     dbglog( "Host address is: " << inet_ntoa( *((in_addr*)he->h_addr) ) );
   }
 
@@ -137,14 +136,14 @@ int Udpsocket::get_port(void) const
 char* Udpsocket::get_name(void) const
 {
  hostent* he = gethostbyaddr(&host_addr_.sin_addr,sizeof(in_addr),AF_INET); 
- checkval( (int)he, 0, Exception("get_name on gethostbyaddr","gethostbyaddr returned 0") );
+ checkval( (long)he, 0, Exception("get_name on gethostbyaddr","gethostbyaddr returned 0") );
  return he->h_name;
 }
 
 hostent* Udpsocket::get_he(void) const
 {
  hostent* he = gethostbyaddr(&host_addr_.sin_addr,sizeof(in_addr),AF_INET); 
- checkval( (int)he, 0, Exception("get_he","gethostbyaddr returned 0") );
+ checkval( (long)he, 0, Exception("get_he","gethostbyaddr returned 0") );
  return he;
 }
 

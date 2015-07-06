@@ -164,7 +164,7 @@ void* link_recv_element(void* arg)
 void* link_layer(void* arg) 
 {
   fin("link_layer()");
-  int host_node_id = (int)arg;
+  int host_node_id = (long)arg;
   pthread_t tid;
   
   // initialize layer
