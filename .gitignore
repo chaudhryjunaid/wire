@@ -1,5 +1,7 @@
 # bin directory
 bin/
+src/client
+src/server
 
 # Compiled Object files
 *.slo
