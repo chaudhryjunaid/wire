@@ -1,0 +1,10 @@
+INITIAL PROJECT WORK
+A lot of work was put into the design document by my team members 
+Muhammad Shahzad and Syed Usman Ali when this project was started.
+Their work in designing some of the data encapsulation and some
+other aspects is duly acknowledged.
+
+CURRENT WORK
+* Project ported to autoconf and automake using tutorial at: 
+http://mij.oltrelinux.com/devel/autoconf-automake/
+recommended by a close friend Muhammad Ali Akbar.
