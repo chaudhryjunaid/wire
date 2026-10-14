@@ -31,7 +31,7 @@ g++ -I. -D_REENTRANT -DDEBUG_VERSION -pthread client2.cc \
 ## Entry points
 
 - `src/client2.cc` is the only `main` that brings up all three layers (link → datalink → network). It is **not** listed in `src/Makefile.am` or `Makefile.x`, so build it manually as above. Usage: `./client2 <my_node_id> <dest_node_id>`. Node 0 reads whitespace-separated words from stdin and sends them to the destination; other nodes print what they receive.
-- `src/client.cc` brings up link + datalink only (no routing). Usage: `./client <my_node_id> <dest_node_id> <total_nodes>` (all three args required). It sets the drop and error weights to 1, which drops every received packet (see "Error injection" below).
+- `src/client.cc` brings up link + datalink only (no routing). Usage: `./client <my_node_id> <dest_node_id> <total_nodes>` (all three args required). Node 0 reads lines from stdin and sends them straight to the destination over one link; other nodes print what they receive.
 - `src/server.cc` is an empty stub.
 
 Run one process per node, from `src/`, because `init_network_layer()` opens `topology.txt` relative to the CWD. Node N binds UDP `localhost.localdomain:50000+N` and sends to node M at port `50000+M`.
@@ -51,7 +51,7 @@ The datalink also keeps private `ack_send_queue`/`ack_recv_queue` so the recv el
 
 **One struct for every layer.** `dgram` (in `link.hh`, aliased as `packet`) is `{char address; string frame;}` everywhere. `address` means *destination / next hop* on the send path and *sender / previous hop* on the receive path. `link_send_element` appends the sender's address byte after the closing HDLC flag, and `link_recv_element` reads it back from there.
 
-**Link layer (`link.cc`).** This is where errors are injected. For each received datagram it drops it with probability 1/`packet_drop_wt`, or flips one bit at a random offset below `max_drop_idx` with probability 1/`packet_err_wt`. A weight of 0 disables that kind of fault.
+**Link layer (`link.cc`).** This is where errors are injected. For each received datagram it drops it with probability 1/`packet_drop_wt`, or flips one bit in a random byte between the frame's flags (within the first `max_drop_idx` bytes) with probability 1/`packet_err_wt`. A weight of 0 disables that kind of fault. Both drivers set both weights to 15 and seed `rand()` with time and PID, so nodes started together don't share fault patterns.
 
 **Datalink (`datalink.cc`, `hdlcframe.cc`, `crc32.cc`).** `frame()` builds `addr | 2-byte control | payload | CRC-32`, then bit-stuffs it and wraps it in `0x7e` flags. `deframe()` reverses this and returns non-zero on CRC failure. Control fields are bitfield unions (`mk_ictrl`/`mk_sctrl`, `bk_ictrl`/`bk_sctrl`). ARQ is stop-and-wait with a 1-bit sequence number per destination, busy-polling for ACKs until `ext::to_val` times out, giving up after `ext::max_timeouts` attempts.
 

@@ -224,6 +224,10 @@ void* dlink_send_element(void* arg)
     while (!dlink_send_queue.empty()){
       Packet_t a_pack(dlink_send_queue.front());
       dlink_send_queue.pop();
+      if (a_pack.address<0 || a_pack.address>=ext::total_nodes){
+	dbglog("Packet addressed to unknown node " << (int)a_pack.address << ", dropping it.");
+	continue;
+      }
       link[(int)a_pack.address].push_back(a_pack);
     }
     pthread_mutex_unlock(&dlink_send_queue_mutex);
@@ -275,8 +279,8 @@ void* dlink_send_element(void* arg)
 	      pthread_mutex_unlock(&ack_recv_queue_mutex);
 	      dbglog("Seq_num of ack received =  " << (int)a.seq_num);
 
-	      if (a.seq_num!=send_window[i].LFS){
-		dbglog( "Ack received but sequence number does not match.");
+	      if (a.address!=i || a.seq_num!=send_window[i].LFS){
+		dbglog( "Ack received but sender or sequence number does not match.");
 		continue;
 	      }else{
 		dbglog( "Ack sequence number matched.");
@@ -343,11 +347,19 @@ void* dlink_recv_element(void* arg)
       
       sender_address = p.address;
       dbglog("Received a frame from " << (int)sender_address);
+      if (sender_address<0 || sender_address>=ext::total_nodes){
+	dbglog("Frame from unknown node: dropping packet.");
+	pthread_mutex_lock(&link_recv_queue_mutex);
+	continue;
+      }
       if ( deframe(p.address,control,p.frame) ) {
-	dbglog("Cyclic Redundency Check error: dropping packet.");  
+	dbglog("Cyclic Redundency Check error: dropping packet.");
 	pthread_mutex_lock(&link_recv_queue_mutex);
 	continue; 		// go for next frame
       }
+      // deframe() stored the frame's address field (our own address) in
+      // p.address; the layers above and the ack matching need the sender
+      p.address = sender_address;
 
       if (is_ictrl(control)) {
 	dbglog("Information frame received from " << (int)sender_address);
@@ -355,7 +367,6 @@ void* dlink_recv_element(void* arg)
 	bk_ictrl(dummy_seq,dummy_PF_bit,seq_num,control);
 	if (  seq_num == recv_window[(int)sender_address].NFE  ){
 	  pthread_mutex_lock(&dlink_recv_queue_mutex);
-	  //	  p.address = sender_address; // compatibility requirement
 	  dlink_recv_queue.push(p);
 	  pthread_mutex_unlock(&dlink_recv_queue_mutex);
 	  sem_post(&dlink_recv_queue_has_data);

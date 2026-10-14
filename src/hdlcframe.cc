@@ -258,6 +258,9 @@ deframe(
   // first and last bytes are preassumed to be start and stop flags
   //  dbglog( "deframe(): frame length = " << frame.length() );
   //  dbglog( "The frame is: " << frame );
+  if (frame.length() < 2){
+    return 1;			// too short to even hold both flags
+  }
   frame.erase(0,1);		// remove start flag
   frame.erase(frame.length()-1,1);	// remove end flag
   //  dbglog( "deframe(): flags removed... " << frame );
@@ -271,7 +274,7 @@ deframe(
     }else{
       bits_set = 0;
     }
-    if (bits_set==5){
+    if (bits_set==5 && i+1<frame.size()){
       frame.erase(frame.begin()+i+1);
       bits_set = 0;
     }
@@ -279,13 +282,18 @@ deframe(
 
   // dbglog( "after un-bitstuffing, frame=" << frame );
 
+  // the sender padded the stuffed bits out to a whole byte; the original
+  // frameload was whole bytes, so drop the leftover padding bits. (Testing
+  // for a trailing 0 byte instead also ate CRCs whose last byte was 0.)
+  frame.resize(frame.size() - frame.size()%8);
   frame = b_to_s(frame);
-  if (frame[frame.size()-1]==0){
-    frame.erase(frame.length()-1,1);	// remove end byte if 0 (due to padding)
-  }
 
   //  dbglog("after compacting size = " << frame.size() );
- 
+
+  if (frame.size() < 7){
+    return 1;			// shorter than address + control + fcs
+  }
+
   if (check_fcs(frame)){
     dbglog( "Frame received incorrectly.");
     return 1;			// indicate fcs error
@@ -295,8 +303,9 @@ deframe(
   *( (char*) &control ) = frame[1];
   *( ((char*)&control) + 1) = frame[2];
 
-  // remove header bytes
-  frame = frame.c_str()+3;
+  // remove header bytes (erase, not c_str()+3: the payload is binary and
+  // network layer packets start with a 0 type byte)
+  frame.erase(0,3);
 
   dbgcode(dbglog("deframe(): Deframing successful with:  " << frame ););
 

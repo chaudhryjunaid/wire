@@ -19,6 +19,7 @@ using namespace ext;
 int main(int argc, char* argv[])
 {
   fin("main");
+  srand(time(NULL) ^ getpid());	// nodes started in the same second must not share fault patterns
 
 
 // int next_option;
@@ -74,13 +75,19 @@ int main(int argc, char* argv[])
 // }
 // /* The main program goes here. */
 
-  if (argc>=4) ext::total_nodes = atoi(argv[3]);
+  if (argc<4){
+    cout << "usage: " << argv[0] << " <my_node_id> <dest_node_id> <total_nodes>" << endl;
+    exit(1);
+  }
+
+  ext::total_nodes = atoi(argv[3]);
   ext::my_address = atoi(argv[1]);
   packet a;
   a.address = atoi(argv[2]);
   
-  ext::packet_drop_wt = 1;
-  ext::packet_err_wt = 1;
+  // 1 in N packets dropped / corrupted; N=1 dropped every packet
+  ext::packet_drop_wt = 15;
+  ext::packet_err_wt = 15;
 
   try {
     cout << "Entering try block..." << endl;

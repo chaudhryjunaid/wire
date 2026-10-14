@@ -29,8 +29,8 @@ int Exception::get_severity(void)
 }
 
 Errno_exception::Errno_exception(string thrower)
+  : Exception(thrower,strerror(errno),NONFATAL)
 {
-  Exception(thrower,strerror(errno),NONFATAL);
   errno_val_ = errno;
 }
 

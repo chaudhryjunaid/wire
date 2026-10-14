@@ -3,6 +3,7 @@
 //
 
 
+#include <cstdlib>
 #include "fileparser.hh"
 
 // **********************************************************************
@@ -21,9 +22,9 @@ File_parser::File_parser(const string& filename)
   ifstream file(filename.c_str(), ios::in);
   if (!file){
     //    throw Errno_exception("File_parser::File_parser()");
-    cout << "File open operation failed!" << endl;
-    cout << "Probably the filename was incorrect." << endl;
-    //exit(1);
+    cout << "File open operation failed: " << filename << endl;
+    cout << "It is opened relative to the current directory." << endl;
+    exit(1);
   }
 
   //  dbglog("Parsing file...");
@@ -83,18 +84,22 @@ File_parser::~File_parser()
 
 string File_parser::get_next_token(void)
 {
-  unsigned old_idx = idx;
-  idx = file_str.find(' ',idx) + 1;
-
   // if previous was the last string of file
   // return empty string
-  if (idx==string::npos){
-    idx = old_idx;
+  if (idx>=file_str.size()){
     return string();
   }
 
-  // 
-  return file_str.substr(old_idx,idx-old_idx-1);
+  // the last token has no trailing separator when the file does not
+  // end in whitespace (find() + 1 used to wrap npos round to 0 here)
+  string::size_type end = file_str.find(' ',idx);
+  if (end==string::npos){
+    end = file_str.size();
+  }
+
+  string token = file_str.substr(idx,end-idx);
+  idx = end + 1;
+  return token;
 }
 
 unsigned File_parser::get_len()

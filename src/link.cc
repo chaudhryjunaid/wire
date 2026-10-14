@@ -52,13 +52,13 @@ void init_link_layer(int host_node_id)
   }
 
   dbglog("Quantizing channel flakiness... ");
-  dbglog("Approximately 1 packet in " << (int)ext::packet_drop_wt << " will have a 1-bit error.");
+  dbglog("Approximately 1 packet in " << (int)ext::packet_err_wt << " will have a 1-bit error.");
 
   dbglog("Quantizing network mischief...");
-  dbglog("Approximately 1 packet in " << (int)ext::packet_err_wt << " will be dropped."); 
+  dbglog("Approximately 1 packet in " << (int)ext::packet_drop_wt << " will be dropped.");
 
   checkval_0(sem_init(&link_send_queue_has_data,0,0),Exception("init_link_layer","semaphore could not be initialized."));
-  checkval_0(sem_init(&link_send_queue_has_data,0,0),Exception("init_link_layer","semaphore could not be initialized."));
+  checkval_0(sem_init(&link_recv_queue_has_data,0,0),Exception("init_link_layer","semaphore could not be initialized."));
   checkval_0(pthread_mutex_init( &comm_socket_mutex,NULL),
 	     Exception("init_link_layer","mutex could not be initialized.")
 	     );
@@ -120,13 +120,17 @@ void* link_recv_element(void* arg)
   char str[MAX_MTU] = {0};
   int intr_err = 0;
   while (!ext::time_to_quit){
-    recv_socket->recv_dgram(str,MAX_MTU);
-    
+    int len = recv_socket->recv_dgram(str,MAX_MTU);
+
     if ( ext::packet_drop_wt!=0 && (rand()%ext::packet_drop_wt == 0) ){
       dbglog( "Ha Ha Ha! Dropped a packet.");
       continue;
     }else if ( ext::packet_err_wt!=0 &&  (rand()%ext::packet_err_wt==0) ){
-      intr_err = rand() % ext::max_drop_idx;
+      // pick a byte between the flags: the datagram is start flag, frame
+      // bytes, end flag, sender address. Picking from all max_drop_idx
+      // bytes nearly always landed past the end of our short frames.
+      int last = (len-3 < ext::max_drop_idx) ? len-3 : ext::max_drop_idx;
+      intr_err = (last>=1) ? 1 + rand()%last : 0;
       dbglog( "Error in coming stream at (random) location:  " << intr_err);
     }else{
       dbglog("No error! Am I talking over a real channel or what?");

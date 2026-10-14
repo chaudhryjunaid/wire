@@ -10,6 +10,7 @@
 #include <vector>
 #include <queue>
 #include <errno.h>
+#include <climits>
 #include "threads.hh"
 #include "datalink.hh"
 #include "fileparser.hh"
@@ -119,175 +120,49 @@ void printgraph()
 
 
 
-unsigned calcnh(vector< lsp > cls, unsigned last, unsigned node, unsigned first)
-{
-  //  cout<<"\nEntering the function:";
-  unsigned head=last;
-  unsigned tail=first;
-
-  // cout<<"tail is "<<tail<<endl;
-  // cout<<"head is "<<head<<endl;
-  // cout<<"Entering the loop:";
-  
-  while(head!=tail)
-    {
-      //  cout << "pappo yaar tang na kar" << endl;
-     
-      for(unsigned i=0;i<cls.size();i++)
-	{
-	  if(tail==cls[i].dest) 
-	    {
-	      //            cout << "TAIL = " << tail << endl;
-	      //    cout << "head = " << head << endl;
-	      head=tail;
-	      tail=cls[i].nhop;
-	    }
-	  if(head==tail)
-	    {
-	      return head;
-	    }
-	}
-    }
-    
-  return head;
-}
-
-
-
+// returns the routing table for node: one {dest, weigh, nhop} entry per
+// reachable node, in the order they were settled (node itself first), so
+// look entries up by dest rather than indexing by node id
 vector< lsp > dijkistra(unsigned node)
 {
   // nobody should use graph during dijkistra
   pthread_mutex_lock(&graph_mutex);
   cout<<"\nGenerating Routing table."<<endl;
-  unsigned enter=0;
+
+  const unsigned unreached = UINT_MAX;
+  vector < unsigned > dist(v.size(),unreached);
+  vector < unsigned > nhop(v.size(),node);
+  vector < bool > settled(v.size(),false);
   vector < lsp > cls;
-  vector < lsp > tls;
   list < linkinfo >::iterator li;
-  unsigned next_hop;
 
-  //  cout<<"Tls size : "<<tls.size()<<endl;
-  //  cout<<"Cls size : "<<cls.size()<<endl;
+  if (node<v.size())
+    dist[node]=0;
 
-  cls.push_back(lsp(node,0,node));
-  
   while(1){
-    
-  unsigned last;
-  unsigned first;
+    // settle the closest node not yet in the routing table
+    unsigned u=unreached;
+    for (unsigned i=0;i<v.size();i++)
+      if (!settled[i] && dist[i]!=unreached && (u==unreached || dist[i]<dist[u]))
+	u=i;
+    if (u==unreached)
+      break;			// everything left is unreachable
 
-  last=cls[cls.size()-1].dest;
-  first=cls[cls.size()-1].nhop;
-  //  cout<<"dest is now :"<<last<<endl;
+    settled[u]=true;
+    cls.push_back(lsp(u,dist[u],nhop[u]));
 
-  for(li = v[last].begin();li!= v[last].end();li++)
-    {
-
-      //  cout<<"Next hop is"<<next_hop<<endl;
-      int c=0;
-      for(unsigned i=0;i<tls.size();i++)
-	{
-	  if (tls.empty())
-	    break;
-
-	  //    cout<<"tls is : "<<tls.size()<<endl;
-	  // cout<<"i is : "<<i<<endl;
-	  if(tls[i].dest==li->neigh)
+    for(li = v[u].begin();li!= v[u].end();li++)
+      {
+	if (li->neigh>=v.size() || settled[li->neigh])
+	  continue;
+	if (dist[u]+li->weigh<dist[li->neigh])
 	  {
-	    //	    int pp=li->weigh+cls[cls.size()-1].weigh;
-	    //	    cout<<"Weight is :"<<pp<<endl;
-	    if((li->weigh+cls[cls.size()-1].weigh)<tls[i].weigh)
-	    {
-	      //cls[cls.size()-1].dest
-	      //cls[cls.size()-1].nhop
-	      c=1;
-	      next_hop=calcnh(cls,last,node,first);
-	      tls[i]=lsp(li->neigh,li->weigh+cls[cls.size()-1].weigh,next_hop);
-	    }
+	    dist[li->neigh]=dist[u]+li->weigh;
+	    // our own neighbours are their own next hop; anything further
+	    // away is reached through the same first hop as u
+	    nhop[li->neigh]=(u==node)?li->neigh:nhop[u];
 	  }
-	}
-      
-      int m=0;
-      for(unsigned l=0;l<cls.size();l++)
-	{
-	  if(li->neigh==cls[l].dest)
-	    {
-	      m=1;
-	      break;
-	    }
-	}
-
-      if((cls.size()>1)&&(m==0)&&(c==0))
-	{
-	  //	  cout<<"More than 1"<<endl;
-	  //	  cout<<"Weight is :"<<cls[cls.size()-1].weigh+li->weigh<<endl;
-	  next_hop=calcnh(cls,last,node,first);     
-	  tls.push_back(lsp(li->neigh,cls[cls.size()-1].weigh+li->weigh,next_hop));
-	}
-
-      else if((cls.size()==1)&&(m==0))
-	{
-	  //	  cout<<"Only one in cls"<<endl;
-	  tls.push_back(lsp(li->neigh,li->weigh,li->neigh));
-	}
-    }
-  
-  //  cout<<"Tentive list is "<<endl;
-  for (unsigned su=0;su<tls.size();su++)
-    {
-      //  cout<<"("<<tls[su].dest<<tls[su].weigh<<tls[su].nhop<<")"<<endl;
-    }
-
-  //  cout<<"Tls size : "<<tls.size()<<endl;
-
-  unsigned min;
-  unsigned min_idx;
-
-  if(!tls.empty())
-    {
-      min=tls[0].weigh;
-      min_idx=0;
-    
-      for (unsigned j=0;j<tls.size();j++)
-	{
-	  //  cout<<"tls min ="<<endl;
-	  if((tls[j].weigh)<min)
-	    {
-	      min=tls[j].weigh;
-	      min_idx=j;
-	    }
-	}
-
-      int yup=0;
-      int pup=0;
-      for(unsigned d=0;d<cls.size();d++)
-	{
-	  if(cls[d].dest==tls[min_idx].dest)
-	    {
-	      //  cout<<"main hoon na"<<endl;
-	      yup=1;
-	      if(cls[d].weigh>tls[min_idx].dest)
-		{
-		  pup=1;
-		  cls.push_back(tls[min_idx]);
-		}
-	      break;
-	    }
-	}
-      if(!yup&&!pup)
-	cls.push_back(tls[min_idx]);
-      
-      tls.erase(tls.begin()+min_idx);
-	
-    }
-
-  //  cout<<"\nClist is : "<<endl;
-
-  if(cls.size()==v.size())
-    break;
-
-  enter++;
-  if(enter==v.size())
-    break;
+      }
   }
 
   cout<<"Routing table done."<<endl;
@@ -474,10 +349,22 @@ void enq_pack(string r_data,char r_prevhop=0)
   pthread_mutex_lock(&cls_mutex);
   if(r_data[0]==0)
     {
-      pthread_mutex_lock(&dlink_send_queue_mutex);
-      dlink_send_queue.push(packet((char)cls[(unsigned)r_data[2]].nhop,r_data));
-      pthread_mutex_unlock(&dlink_send_queue_mutex);
-      sem_post(&dlink_send_queue_has_data);
+      // cls is in settle order, not indexed by node id: find dest's entry
+      unsigned dest=(unsigned char)r_data[2];
+      unsigned k=0;
+      while (k<cls.size() && cls[k].dest!=dest)
+	k++;
+      if (k==cls.size())
+	{
+	  cout<<"No route to node "<<dest<<", dropping packet."<<endl;
+	}
+      else
+	{
+	  pthread_mutex_lock(&dlink_send_queue_mutex);
+	  dlink_send_queue.push(packet((char)cls[k].nhop,r_data));
+	  pthread_mutex_unlock(&dlink_send_queue_mutex);
+	  sem_post(&dlink_send_queue_has_data);
+	}
     }
   else if (r_data[0]==2)
     {
@@ -500,6 +387,12 @@ void init_network_layer(void)
 {
   fin("init_network_layer()");
 
+  // printgraph() and dijkistra() below lock these, so set them up first
+  checkval_0(pthread_mutex_init( &graph_mutex,NULL),
+	     Exception("init_nl_layer","mutex could not be initialized.") );
+  checkval_0(pthread_mutex_init( &cls_mutex,NULL),
+	     Exception("init_nl_layer","mutex could not be initialized.") );
+
   File_parser tp("topology.txt");
 
   v=adjmat(tp); // create initial routing table from file
@@ -520,12 +413,6 @@ void init_network_layer(void)
   checkval_0(pthread_mutex_init( &nl_send_queue_mutex,NULL),
 	     Exception("init_nl_layer","mutex could not be initialized.") );
   checkval_0(pthread_mutex_init( &nl_recv_queue_mutex,NULL),
-	     Exception("init_nl_layer","mutex could not be initialized.") );
-
-
-  checkval_0(pthread_mutex_init( &graph_mutex,NULL),
-	     Exception("init_nl_layer","mutex could not be initialized.") );
-  checkval_0(pthread_mutex_init( &cls_mutex,NULL),
 	     Exception("init_nl_layer","mutex could not be initialized.") );
 
 
@@ -607,8 +494,9 @@ void* network_recv_element(void*)
 		  }
 	      }
 	  }
-	pthread_mutex_unlock(&dlink_recv_queue_mutex);
+	pthread_mutex_lock(&dlink_recv_queue_mutex);
       }
+      pthread_mutex_unlock(&dlink_recv_queue_mutex);
     }
 
     fout("network_recv_element()"); 

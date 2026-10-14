@@ -52,6 +52,7 @@ int Udpsocket::bind_socket(const char *host, const int port, const bool host_is_
     dbglog( "Host name is: " << he->h_name );;
   } else {
     he  = gethostbyname(host);
+    checkval( he != NULL, 0, Exception("bind_socket on gethostbyname",hstrerror(h_errno)) );
     dbglog( "Host address is: " << inet_ntoa( *((in_addr*)he->h_addr) ) );
   }
 

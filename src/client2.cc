@@ -20,11 +20,12 @@ using namespace ext;
 int main(int argc, char* argv[])
 {
   fin("main");
-  srand(time(NULL));
+  srand(time(NULL) ^ getpid());	// nodes started in the same second must not share fault patterns
   try {
     cout << "Entering try block..." << endl;
     pthread_t tid; 
     if (argc<3){
+      cout << "usage: " << argv[0] << " <my_node_id> <dest_node_id>" << endl;
       exit(1);
     }
     
@@ -52,7 +53,9 @@ int main(int argc, char* argv[])
     for (int i=0; i< 10;i++){
       if (atoi(argv[1])==0){
 	//      cout<< "Enter a string: ";
-	cin >> a.frame;
+	if (!(cin >> a.frame)){
+	  break;		// end of input: don't resend the last word
+	}
 	pthread_mutex_lock(&nl_send_queue_mutex);
 	nl_send_queue.push(a);
 	pthread_mutex_unlock(&nl_send_queue_mutex);
@@ -61,7 +64,7 @@ int main(int argc, char* argv[])
 	sem_wait(&nl_recv_queue_has_data);
 	pthread_mutex_lock(&nl_recv_queue_mutex);
 	cout << "CLIENT: [data received]: "
-	     << dlink_recv_queue.front().frame << endl;
+	     << nl_recv_queue.front().frame << endl;
 	nl_recv_queue.pop();
 	pthread_mutex_unlock(&nl_recv_queue_mutex);
       }
