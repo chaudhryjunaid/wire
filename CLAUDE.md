@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Wire (formerly NG-DS, a 2007 university project) is a C++/pthreads simulation of a layered network stack: a simulated physical layer over UDP that injects random drops and bit errors, an HDLC-style datalink with CRC-32 and stop-and-wait ARQ, and a link-state network layer using Dijkstra routing. Per README.md the project is incomplete and not yet working end to end. There are no tests and no lint configuration.
+Wire (formerly NG-DS, a 2007 university project) is a C++/pthreads simulation of a layered network stack: a simulated physical layer over UDP that injects random drops and bit errors, an HDLC-style datalink with CRC-32 and stop-and-wait ARQ, and a link-state network layer using Dijkstra routing. README.md still calls the project not working. Since the 2026 bitrot and logic fixes, `client2` delivers messages end to end across the topology, but parts of the intent are unfinished. There are no tests and no lint configuration.
 
 Read `INTENT.md` for the project's design goals (OSI-first layering, UDP modeled as the physical layer, configurable link degradation) and the known gaps between those goals and the current code. Keep changes aligned with it.
+
+`USAGE.md` is the user-facing guide to building, running and troubleshooting a network of nodes. Update it whenever command-line usage, `topology.txt` rules, output messages or fault settings change.
 
 ## Building
 
