@@ -25,8 +25,8 @@ public:
   Log(const char* log_file_name = "templog", char* log_header=0, bool append_time=false);
   virtual ~Log();
 
-  void write(char* s = "log written");
-  void end(char* footer = "Logging stopped");
+  void write(const char* s = "log written");
+  void end(const char* footer = "Logging stopped");
 
   ostream& filestream(void);
 private:

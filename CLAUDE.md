@@ -16,7 +16,9 @@ The autotools build is the intended path (requires autoconf/automake):
 ./autogen.sh && ./configure && make      # produces src/server and src/client
 ```
 
-`Makefile.x` is the legacy hand-written Makefile (`make -f Makefile.x`). Its makedepend block (below `# DO NOT DELETE`) hard-codes absolute system-header paths such as `/usr/include/xlocale.h` that no longer exist on modern glibc, so it fails with "No rule to make target". Regenerate with `make -f Makefile.x depend` (needs `makedepend`) or strip that block.
+`Makefile.x` is the legacy hand-written Makefile (`make -f Makefile.x`, binaries in `bin/`). Its dependency block (below `# DO NOT DELETE`) lists project headers only and was generated with `g++ -MM`. `make -f Makefile.x depend` runs `makedepend`, which also writes absolute system-header paths; those break the build whenever glibc removes a header, as happened with `xlocale.h` and `rpc/netdb.h`.
+
+The autotools build compiles with `-g -O2`, but `Makefile.x` and the direct `g++` command pass no `-O`, and for unoptimized builds GCC 15+ libstdc++ enables `_GLIBCXX_ASSERTIONS`. Out-of-range `std::string`/container access then aborts with `Assertion '__pos <= size()' failed` instead of silently reading garbage.
 
 Building directly without either build system works (run from `src/`):
 

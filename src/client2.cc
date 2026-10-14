@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     ext::packet_drop_wt = 15;
     ext::my_address = atoi(argv[1]);
 
-    pthread_create(&tid,NULL,link_layer,(void*)atoi(argv[1]));    
+    pthread_create(&tid,NULL,link_layer,(void*)(long)atoi(argv[1]));    
     pthread_join(tid,NULL);
     cout << "Physical layer created." << endl;
     

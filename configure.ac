@@ -23,4 +23,5 @@ AC_C_INLINE
 AC_CHECK_FUNCS([bzero gethostbyaddr gethostbyname gettimeofday inet_ntoa socket strerror])
 
 
-AC_OUTPUT(Makefile src/Makefile)
+AC_CONFIG_FILES([Makefile src/Makefile])
+AC_OUTPUT

@@ -10,6 +10,7 @@
 #ifndef CRC32_HH_
 #define CRC32_HH_
 
+#include <cstdint>
 
 typedef unsigned long ulong;
 static ulong const eth_key = 0x04c11db7;
@@ -28,8 +29,8 @@ public:
   }
 private:
   void put_bit (bool bit);
-  ulong _key;	// really 33-bit key, counting implicit 1 top-bit
-  ulong _register;
+  uint32_t _key;	// really 33-bit key, counting implicit 1 top-bit
+  uint32_t _register;	// must be exactly 32 bits: unsigned long is 64 bits on LP64
 };
 
 

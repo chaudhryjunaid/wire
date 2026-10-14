@@ -44,10 +44,10 @@ void init_link_layer(int host_node_id)
 
   for (int i=0; i<ext::total_nodes;i++){
     if (i==host_node_id){
-      recv_socket->bind_socket("localhost.localdomain",50000+i);
-      comm_socket[i].fix_dest("localhost.localdomain",50000+i);
+      recv_socket->bind_socket("localhost",50000+i);
+      comm_socket[i].fix_dest("localhost",50000+i);
     }else{
-      comm_socket[i].fix_dest("localhost.localdomain",50000+i);
+      comm_socket[i].fix_dest("localhost",50000+i);
     }
   }
 

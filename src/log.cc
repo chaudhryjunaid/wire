@@ -31,7 +31,7 @@ Log::~Log()
   logstream_.close();
 }
 
-void Log::write(char* s)
+void Log::write(const char* s)
 {
   assert(logstream_);
   if (timestamps_enabled_){
@@ -47,7 +47,7 @@ void Log::write(char* s)
   }
 }
 
-void Log::end(char* footer)
+void Log::end(const char* footer)
 {
   if (footer) {
     logstream_ << footer << endl;

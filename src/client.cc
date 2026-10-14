@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
     cout << "Entering try block..." << endl;
     pthread_t tid; 
     if (argc>3){
-      pthread_create(&tid,NULL,link_layer,(void*)atoi(argv[1]));
+      pthread_create(&tid,NULL,link_layer,(void*)(long)atoi(argv[1]));
     }else{
       cout << "args" << endl;
       exit(1);
