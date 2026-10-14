@@ -30,7 +30,7 @@ g++ -I. -D_REENTRANT -DDEBUG_VERSION -pthread client2.cc \
 
 ## Entry points
 
-- `src/client2.cc` is the only `main` that brings up all three layers (link → datalink → network). It is **not** listed in `src/Makefile.am` or `Makefile.x`, so build it manually as above. Usage: `./client2 <my_node_id> <dest_node_id>`. Node 0 reads whitespace-separated words from stdin and sends them to the destination; other nodes print what they receive.
+- `src/client2.cc` is the only `main` that brings up all three layers (link → datalink → network). It is **not** listed in `src/Makefile.am` or `Makefile.x`, so build it manually as above. Usage: `./client2 <my_node_id>`, then type one message per line as `<dest_node_id> <message>`. Any node can send to any node, and a separate thread prints each delivery with its source node. At end of input the node keeps forwarding and receiving (it may be a hop on other routes) until Ctrl-C. For scripted tests, pipe each node's input (`printf "3 hello\n" | ./client2 0`) and stop the processes with `timeout`.
 - `src/client.cc` brings up link + datalink only (no routing). Usage: `./client <my_node_id> <dest_node_id> <total_nodes>` (all three args required). Node 0 reads lines from stdin and sends them straight to the destination over one link; other nodes print what they receive.
 - `src/server.cc` is an empty stub.
 
