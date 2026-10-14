@@ -42,10 +42,16 @@ struct sf_control
   int N_Recv    : 7;		// Recv sequence number
   int PF_bit    : 1;		// Poll/Final bit
   int zero_bits : 4;		// always 0 (4 bits)
-  int Sfnc_bits : 2;    	// Supervisory function bits
+  unsigned Sfnc_bits : 2;    	// Supervisory function bits (SF_* below)
   int zero_bit  : 1;		// always 0 (1 bit)
   int if_sf     : 1;		// always 1 in a S-frame
 };
+
+// supervisory functions this stack uses (HDLC proper would use U-frames,
+// SABM/UA, for the link reset; this stack only has I- and S-frames)
+#define SF_ACK        0		// acknowledges the I-frame numbered N_Recv
+#define SF_RESET      2		// receiver: expect N_Recv as the next I-frame
+#define SF_RESET_ACK  3		// confirms an SF_RESET for N_Recv
 
 union control_bits
 {

@@ -55,7 +55,7 @@ using namespace std;
 
  #ifdef DEBUG_VERSION
   #ifdef DEBUG_THIS_FILE
-   #define dbglog(log) { cout << log << endl; }
+   #define dbglog(log) { Out_line() << log << endl; }
   #else
    #define  dbglog(log) ;
   #endif
@@ -65,7 +65,8 @@ using namespace std;
 
 #endif
 
-// use dbglog() in code instead of cout 
+// use dbglog() in code instead of cout; for output that must always
+// appear, use Out_line() (log.hh) so threads don't mix their lines
 
 #ifdef DEBUG_VERSION
 
@@ -87,7 +88,7 @@ using namespace std;
 #ifdef STD_TRACE_VERSION
 
  #ifdef DEBUG_THIS_FILE
-   #define fin(fname) { cout << "[0m Entering function " << fname << "[0m" << endl; }
+   #define fin(fname) { Out_line() << "[0m Entering function " << fname << "[0m" << endl; }
  #else
    #define fin(fname) ;
  #endif
@@ -112,7 +113,7 @@ using namespace std;
 #ifdef STD_TRACE_VERSION
 
   #ifdef DEBUG_THIS_FILE
-   #define fout(fname) { cout << "\t Leaving function " << fname << " -----" << endl; }
+   #define fout(fname) { Out_line() << "\t Leaving function " << fname << " -----" << endl; }
   #else
    #define fout(fname) ;
   #endif

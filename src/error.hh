@@ -58,4 +58,10 @@ void checkval(int ret_val, int errval, Exception exception);
 void checkval2(int ret_val, int goodval, Exception exception);
 void checkval_0(int ret_val, Exception exception);
 
+// Each program's main() installs this with std::set_terminate(). The layer
+// threads have no catch blocks, so an exception thrown in one (a port
+// already in use, say) ends up here: print it and exit, instead of the
+// runtime aborting with only the exception's type name.
+void report_uncaught_exception(void);
+
 #endif	// ERROR_HANDLING_HH_

@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include "fileparser.hh"
+#include "log.hh"
 
 // **********************************************************************
 // to be removed upon receipt
@@ -18,12 +19,12 @@
 File_parser::File_parser(const string& filename)
 {
   //  fin("File_parser::File_parser");
-  cout << "Entering File_parser() ... " << endl;
+  Out_line() << "Entering File_parser() ... " << endl;
   ifstream file(filename.c_str(), ios::in);
   if (!file){
     //    throw Errno_exception("File_parser::File_parser()");
-    cout << "File open operation failed: " << filename << endl;
-    cout << "It is opened relative to the current directory." << endl;
+    Out_line() << "File open operation failed: " << filename << endl;
+    Out_line() << "It is opened relative to the current directory." << endl;
     exit(1);
   }
 
@@ -73,9 +74,9 @@ File_parser::File_parser(const string& filename)
   idx = 0;
 
   //  dbglog("file parsed as: " << file_str);
-  cout << "File parsed as: " << file_str << endl;
+  Out_line() << "File parsed as: " << file_str << endl;
   //fout("File_parser::File_parser");
-  cout << "Exitting File_parser()... " << endl;
+  Out_line() << "Exitting File_parser()... " << endl;
 }
 
 File_parser::~File_parser()

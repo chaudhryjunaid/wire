@@ -44,9 +44,9 @@ int Udpsocket::bind_socket(const char *host, const int port, const bool host_is_
   hostent* he = 0;
 
   if (host_is_addr) {
-    cout << host_addr_.sin_addr.s_addr << endl; 
+    Out_line() << host_addr_.sin_addr.s_addr << endl; 
     checkval( inet_aton(host,&host_addr_.sin_addr) ,0, Exception("bind_socket","inet_ntoa exception"));
-    cout << host_addr_.sin_addr.s_addr << endl; 
+    Out_line() << host_addr_.sin_addr.s_addr << endl; 
     he = gethostbyaddr(&host_addr_.sin_addr,sizeof(in_addr),AF_INET); 
     checkval( he != NULL, 0, Exception("bind_socket","gethostbyaddr returned 0") );
     dbglog( "Host name is: " << he->h_name );;
@@ -60,7 +60,7 @@ int Udpsocket::bind_socket(const char *host, const int port, const bool host_is_
   host_set_ = true;
 
   int rval = bind(sockfd_, (sockaddr*)&host_addr_, sizeof(sockaddr));
-  check_errno( rval,"bind_socket on bind");
+  check_errno( rval,"bind_socket: cannot use UDP port " + to_string(port));
   dbglog( "Socket bind successful." );
 
   fout("Udpsocket::bind_socket");

@@ -28,7 +28,7 @@ void* app_recv_element(void*)
     while (!nl_recv_queue.empty()){
       packet p(nl_recv_queue.front());
       nl_recv_queue.pop();
-      cout << "CLIENT: [data received from node " << (int)p.address << "]: "
+      Out_line() << "CLIENT: [data received from node " << (int)p.address << "]: "
 	   << p.frame << endl;
     }
     pthread_mutex_unlock(&nl_recv_queue_mutex);
@@ -39,12 +39,13 @@ void* app_recv_element(void*)
 int main(int argc, char* argv[])
 {
   fin("main");
+  set_terminate(report_uncaught_exception);	// report errors from the layer threads
   srand(time(NULL) ^ getpid());	// nodes started in the same second must not share fault patterns
   try {
-    cout << "Entering try block..." << endl;
+    Out_line() << "Entering try block..." << endl;
     pthread_t tid;
     if (argc!=2 || atoi(argv[1])<0 || atoi(argv[1])>=ext::total_nodes){
-      cout << "usage: " << argv[0] << " <my_node_id 0-" << (int)ext::total_nodes-1 << ">" << endl
+      Out_line() << "usage: " << argv[0] << " <my_node_id 0-" << (int)ext::total_nodes-1 << ">" << endl
 	   << "then type one message per line as: <dest_node_id> <message>" << endl;
       exit(1);
     }
@@ -55,19 +56,19 @@ int main(int argc, char* argv[])
 
     pthread_create(&tid,NULL,link_layer,(void*)(long)atoi(argv[1]));
     pthread_join(tid,NULL);
-    cout << "Physical layer created." << endl;
+    Out_line() << "Physical layer created." << endl;
 
     pthread_create(&tid,NULL,dlink_layer,NULL);
     pthread_join(tid,NULL);
-    cout << "Datalink created" << endl;
+    Out_line() << "Datalink created" << endl;
 
     pthread_create(&tid,NULL,network_layer,NULL);
     pthread_join(tid,NULL);
-    cout << "Network layer created." << endl;
+    Out_line() << "Network layer created." << endl;
     sleep(1);
 
     pthread_create(&tid,NULL,app_recv_element,NULL);
-    cout << "Node " << (int)ext::my_address << " ready. Send with: <dest_node_id> <message>" << endl;
+    Out_line() << "Node " << (int)ext::my_address << " ready. Send with: <dest_node_id> <message>" << endl;
 
     string line;
     while (getline(cin,line)){
@@ -77,14 +78,14 @@ int main(int argc, char* argv[])
 
       if (!(fields >> dest)){
 	if (line.find_first_not_of(" \t")!=string::npos){
-	  cout << "Send with: <dest_node_id> <message>" << endl;
+	  Out_line() << "Send with: <dest_node_id> <message>" << endl;
 	}
 	continue;		// blank lines are ignored
       }
       fields >> ws;
       getline(fields,a.frame);
       if (dest<0 || dest>=ext::total_nodes || a.frame.empty()){
-	cout << "Send with: <dest_node_id 0-" << (int)ext::total_nodes-1 << "> <message>" << endl;
+	Out_line() << "Send with: <dest_node_id 0-" << (int)ext::total_nodes-1 << "> <message>" << endl;
 	continue;
       }
 
@@ -97,7 +98,7 @@ int main(int argc, char* argv[])
 
     // other nodes' routes may pass through this one, so keep the stack
     // running after input ends rather than exiting
-    cout << "End of input: still forwarding and receiving. Press Ctrl-C to quit." << endl;
+    Out_line() << "End of input: still forwarding and receiving. Press Ctrl-C to quit." << endl;
     pthread_join(tid,NULL);
   }
 
@@ -106,17 +107,17 @@ int main(int argc, char* argv[])
     exit(1);
   }
   catch(int errno_thrown) {
-    cout << "syscall throwed errno " << errno_thrown << endl;
+    Out_line() << "syscall throwed errno " << errno_thrown << endl;
     perror("Client");
     exit(1);
   }
   catch(char* s){
-    cout << "string exception caught: " << s << endl;
+    Out_line() << "string exception caught: " << s << endl;
     herror("h_errno state");
     exit(1);
   }
   catch(...){
-    cout << "Caught default exception" << endl;
+    Out_line() << "Caught default exception" << endl;
     throw ;
   }
 

@@ -39,7 +39,8 @@ struct Ack
 {
   char address;			// address to which to send
   Seq_num_t seq_num;		// seq num of packet to ack
-  Ack(char addr,Seq_num_t seq):address(addr),seq_num(seq)
+  bool reset;			// acknowledges an SF_RESET, not an I-frame
+  Ack(char addr,Seq_num_t seq,bool rst=false):address(addr),seq_num(seq),reset(rst)
   {}
 };
 
@@ -78,6 +79,7 @@ struct Send_window_state_t
 {
   Seq_num_t LFS;		// last frame sent
   Send_packet sent_packet;
+  bool needs_reset;		// receiver's expected seq num unknown: send SF_RESET first
 };
 
 struct Recv_window_state_t
@@ -182,10 +184,10 @@ void flush_acks()
     packet framed_packet;
     framed_packet.frame = "[#]"; // cannot allow zero byte payload currently
     framed_packet.address = send_ack.address;
-    short control= mk_sctrl(0,0,send_ack.seq_num);
+    short control= mk_sctrl(send_ack.reset?SF_RESET_ACK:SF_ACK,0,send_ack.seq_num);
     framed_packet.frame = frame(framed_packet.address,control,framed_packet.frame.data(),framed_packet.frame.size() );
       
-    dbglog("flush_acks(): Sending ack: " << framed_packet.frame << "  to  " << (int)framed_packet.address );
+    dbglog("flush_acks(): Sending ack: " << printable(framed_packet.frame) << "  to  " << (int)framed_packet.address );
       
     pthread_mutex_lock(&link_send_queue_mutex);
     link_send_queue.push( framed_packet );
@@ -197,19 +199,57 @@ void flush_acks()
   fout("flush_acks()");
 }
 
-void* dlink_send_element(void* arg) 
+// Sends a framed packet to neighbour dest and waits for its acknowledgement
+// (an SF_RESET_ACK if reset is true, otherwise an SF_ACK), resending on
+// every timeout. Returns false after ext::max_timeouts tries.
+bool send_until_acked(int dest,Send_packet& sp,bool reset)
+{
+  int timeouts = 0;
+  while (timeouts<ext::max_timeouts){
+    pthread_mutex_lock(&link_send_queue_mutex);
+    gettimeofday(&sp.send_time,0);
+    link_send_queue.push(sp.p);
+    pthread_mutex_unlock(&link_send_queue_mutex);
+    sem_post(&link_send_queue_has_data);
+
+    dbglog("Packet sent.");
+    dbglog("Waiting for Ack to arrive...");
+    while ( 1 ){
+      if (  sem_trywait(&ack_recv_queue_has_data) == 0){
+	pthread_mutex_lock(&ack_recv_queue_mutex);
+	Ack a = ack_recv_queue.front();
+	ack_recv_queue.pop();
+	pthread_mutex_unlock(&ack_recv_queue_mutex);
+	dbglog("Seq_num of ack received =  " << (int)a.seq_num);
+
+	if (a.address==dest && a.seq_num==sp.seq_num && a.reset==reset){
+	  dbglog( "Ack sequence number matched.");
+	  dbglog( "Acknowlegement accepted.");
+	  return true;
+	}
+	dbglog( "Ack received but sender, sequence number or type does not match.");
+      }else if ( timeout(sp) ){
+	break;
+      }
+    } // while ack arrives, wait
+
+    timeouts++;
+    dbglog( "Timeout occured " << timeouts << " time.");
+  }
+  return false;
+}
+
+void* dlink_send_element(void* arg)
 {
   fin("datalink_send_element()");
 
   Packet_array_t link[ext::total_nodes];
   Send_window_state_t send_window[ext::total_nodes];
-  int timeouts = 0;
-  bool timed_out = false;
-  bool ack_arrived = false;
 
   // initialize send windows' states
-  for (int i=0;i<ext::total_nodes;i++){ // run all sliding window protocols sequentially  
+  for (int i=0;i<ext::total_nodes;i++){ // run all sliding window protocols sequentially
     send_window[i].LFS = 1;	//start swp from 0
+    send_window[i].needs_reset = true; // the receiver may hold state from an earlier run
   }
   
   while (!ext::time_to_quit){
@@ -242,71 +282,43 @@ void* dlink_send_element(void* arg)
 // 	  ack_recv_queue.pop();
 // 	pthread_mutex_unlock(&ack_recv_queue_mutex);
 
-	// invert to get next packet sequence number
-	if (send_window[i].LFS){
-	  send_window[i].LFS = 0;
-	}else {
-	  send_window[i].LFS = 1; 
-	}
+	// sequence number for the next packet
+	Seq_num_t next = send_window[i].LFS ? 0 : 1;
 
-	// frame next packet from queue front
+	// fetch packet from queue front (dequeue from original)
 	packet framed_packet = link[i].front();
-	short control= mk_ictrl(0,0,send_window[i].LFS);
-	framed_packet.frame = frame(framed_packet.address,control,framed_packet.frame.data(),framed_packet.frame.size() );
-	
-	// fetch packet (dequeue from original) and store as current
-	send_window[i].sent_packet = Send_packet(framed_packet, send_window[i].LFS);
 	link[i].erase(link[i].begin());
 
-	// init state
-	ack_arrived = false;
-	timed_out = false;
-	timeouts = 0;
-	do{
-	  pthread_mutex_lock(&link_send_queue_mutex);
-	  gettimeofday(&(send_window[i].sent_packet.send_time),0 );
-	  link_send_queue.push( send_window[i].sent_packet.p );
-	  pthread_mutex_unlock(&link_send_queue_mutex);
-	  sem_post(&link_send_queue_has_data);
-	  
-	  dbglog("Packet sent.");
-	  dbglog("Waiting for Ack to arrive...");
-	  while ( 1 ){
-	    if (  sem_trywait(&ack_recv_queue_has_data) == 0){
-	      pthread_mutex_lock(&ack_recv_queue_mutex);
-	      Ack a = ack_recv_queue.front();
-	      ack_recv_queue.pop();
-	      pthread_mutex_unlock(&ack_recv_queue_mutex);
-	      dbglog("Seq_num of ack received =  " << (int)a.seq_num);
-
-	      if (a.address!=i || a.seq_num!=send_window[i].LFS){
-		dbglog( "Ack received but sender or sequence number does not match.");
-		continue;
-	      }else{
-		dbglog( "Ack sequence number matched.");
-		ack_arrived = true;
-		break;
-	      }
-	    }else if ( timeout(send_window[i].sent_packet) ){
-	      
-	      timed_out = true;
-	      break;
-	    }
-	  } // while ack arrives, wait
-
-	  if ( ack_arrived ) {
- 	    dbglog( "Acknowlegement accepted.");
- 	    break;		// break do while
- 	  } else if ( timed_out ) {
-	    timeouts++; timed_out = false;
-	    dbglog( "Timeout occured " << timeouts << " time.");
+	// Before the first frame on a link, and after giving up on one, we
+	// can't know which sequence number the receiver expects: it may or
+	// may not have the abandoned frame, or may have restarted. Guessing
+	// wrong makes it ack and discard a new frame as a duplicate, so tell
+	// it which number comes next and wait until it confirms.
+	if (send_window[i].needs_reset){
+	  packet reset_packet;
+	  reset_packet.address = i;
+	  reset_packet.frame = "[#]"; // cannot allow zero byte payload currently
+	  reset_packet.frame = frame(reset_packet.address,mk_sctrl(SF_RESET,0,next),reset_packet.frame.data(),reset_packet.frame.size() );
+	  Send_packet reset_sp(reset_packet,next);
+	  dbglog("Resetting link to " << i << ": next sequence number is " << (int)next);
+	  if (!send_until_acked(i,reset_sp,true)){
+	    dbglog( "Destination node unreachable.");
+	    break;
 	  }
-	}while( timeouts<ext::max_timeouts && !ack_arrived) ;
-	
-	if(timeouts>=ext::max_timeouts){
+	  send_window[i].needs_reset = false;
+	}
+
+	// frame the packet and store as current
+	send_window[i].LFS = next;
+	short control= mk_ictrl(0,0,send_window[i].LFS);
+	framed_packet.frame = frame(framed_packet.address,control,framed_packet.frame.data(),framed_packet.frame.size() );
+	send_window[i].sent_packet = Send_packet(framed_packet, send_window[i].LFS);
+
+	if (!send_until_acked(i,send_window[i].sent_packet,false)){
 	  dbglog( "Destination node unreachable.");
+	  send_window[i].needs_reset = true;
 	  break; //maybe notify network layer in future versions
-	} // 
+	}
 	
       }//while link [i]
     }//  seq arq
@@ -396,12 +408,23 @@ void* dlink_recv_element(void* arg)
 	flush_acks();
       } else {
 	dbglog("Control frame received from " << (int)sender_address );
-	bk_sctrl(dummy_seq,dummy_PF_bit,seq_num,control);
-	
-	pthread_mutex_lock(&ack_recv_queue_mutex);
-	ack_recv_queue.push( Ack(p.address,seq_num) );
-	pthread_mutex_unlock(&ack_recv_queue_mutex);
-	sem_post(&ack_recv_queue_has_data);
+	char sfnc;
+	bk_sctrl(sfnc,dummy_PF_bit,seq_num,control);
+
+	if (sfnc==SF_RESET){
+	  // the sender can't tell which frame we expect, so it tells us
+	  dbglog("Link reset by " << (int)sender_address << ": next sequence number is " << (int)seq_num);
+	  recv_window[(int)sender_address].NFE = seq_num;
+	  pthread_mutex_lock(&ack_send_queue_mutex);
+	  ack_send_queue.push( Ack(sender_address,seq_num,true) );
+	  pthread_mutex_unlock(&ack_send_queue_mutex);
+	  flush_acks();
+	}else{
+	  pthread_mutex_lock(&ack_recv_queue_mutex);
+	  ack_recv_queue.push( Ack(p.address,seq_num,sfnc==SF_RESET_ACK) );
+	  pthread_mutex_unlock(&ack_recv_queue_mutex);
+	  sem_post(&ack_recv_queue_has_data);
+	}
       }
       pthread_mutex_lock(&link_recv_queue_mutex);
     } // !queue empty

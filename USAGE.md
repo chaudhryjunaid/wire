@@ -104,14 +104,16 @@ With `-DDEBUG_VERSION`, each node prints a running log of all three layers. Thes
 | `Move to Application layer` | network | A packet for this node is being handed up |
 | `Move the packet to the send side` | network | This node is forwarding a packet for someone else |
 | `No route to node N, dropping packet.` | network | N isn't in the topology, or can't be reached through it |
+| `Packet from node N to node M ran out of age, dropping it.` | network | The packet was forwarded 15 times without arriving, which means a routing loop (usually nodes started with different topology files) |
 | `Ha Ha Ha! Dropped a packet.` | physical | The simulated link lost an incoming frame |
 | `Introduced a 1-bit error.` | physical | The simulated link corrupted an incoming frame |
 | `Cyclic Redundency Check error: dropping packet.` | data link | The CRC caught a corrupted frame |
+| `Resetting link to N: next sequence number is S` | data link | Before the first frame to neighbor N, and after giving up on one, the sender tells N which sequence number comes next |
 | `Timeout occured N time.` | data link | No acknowledgement in time; resending |
 | `Acknowlegement accepted.` | data link | The neighbor confirmed the frame |
 | `Destination node unreachable.` | data link | Gave up after 5 timeouts on one hop |
 
-Each layer runs in its own threads, and they all write to the same terminal without coordinating. Two lines sometimes get mixed together, and frames are printed as raw bytes, so you will see some garbled characters. When searching saved output, use `grep -a` so the raw bytes don't make `grep` treat the file as binary.
+Each layer runs in its own threads, but every line is written whole, so lines from different threads don't get mixed together. Frames and packets are binary, so their unprintable bytes are shown as `\xNN`; for example, the frame flag is `~` and a 0 byte is `\x00`.
 
 ### Quieter output
 
@@ -149,7 +151,7 @@ for n in 1 2 3 4; do
 done
 (sleep 2; printf '3 hello from zero\n2 second message\n') | timeout 30 ./client2 0 > node0.log 2>&1
 wait
-grep -a 'data received' node*.log
+grep 'data received' node*.log
 ```
 
 The `sleep 2` gives the other nodes time to come up. Nodes never exit on their own, so `timeout` is what stops them.
@@ -175,8 +177,9 @@ Run it as `client <my_node_id> <dest_node_id> 5` (the last argument is the node 
 | What you see | Cause and fix |
 |---|---|
 | `File open operation failed: topology.txt` | The node was started outside the directory containing `topology.txt`. Run it from `src/`. |
-| `terminate called after throwing an instance of 'Errno_exception'` at startup | Another process already uses this node's port, usually a node with the same id still running. Stop it, for example with `pkill client2`, and start again. |
+| `bind_socket: cannot use UDP port 5000N: Address already in use` | Another process already uses this node's port, usually a node with the same id still running. Stop it, for example with `pkill client2`, and start again. |
 | The usage text is printed and the node exits | The node id is missing, outside 0–4, or followed by extra arguments. |
 | `Destination node unreachable.` | The next node on the route isn't running. Start every node in the topology. |
 | `No route to node N, dropping packet.` | N isn't in `topology.txt`, or no chain of links connects to it. |
-| Output scrolls too fast to follow | Use the [quieter build](#quieter-output), or save output to a file and search it with `grep -a`. |
+| `Packet from node N to node M ran out of age, dropping it.` | Nodes disagree about the routes, usually because they were started with different `topology.txt` files. Start every node from the same directory. |
+| Output scrolls too fast to follow | Use the [quieter build](#quieter-output), or save output to a file and search it with `grep`. |

@@ -55,14 +55,14 @@ The datalink also keeps private `ack_send_queue`/`ack_recv_queue` so the recv el
 
 **Link layer (`link.cc`).** This is where errors are injected. For each received datagram it drops it with probability 1/`packet_drop_wt`, or flips one bit in a random byte between the frame's flags (within the first `max_drop_idx` bytes) with probability 1/`packet_err_wt`. A weight of 0 disables that kind of fault. Both drivers set both weights to 15 and seed `rand()` with time and PID, so nodes started together don't share fault patterns.
 
-**Datalink (`datalink.cc`, `hdlcframe.cc`, `crc32.cc`).** `frame()` builds `addr | 2-byte control | payload | CRC-32`, then bit-stuffs it and wraps it in `0x7e` flags. `deframe()` reverses this and returns non-zero on CRC failure. Control fields are bitfield unions (`mk_ictrl`/`mk_sctrl`, `bk_ictrl`/`bk_sctrl`). ARQ is stop-and-wait with a 1-bit sequence number per destination, busy-polling for ACKs until `ext::to_val` times out, giving up after `ext::max_timeouts` attempts.
+**Datalink (`datalink.cc`, `hdlcframe.cc`, `crc32.cc`).** `frame()` builds `addr | 2-byte control | payload | CRC-32`, then bit-stuffs it and wraps it in `0x7e` flags. `deframe()` reverses this and returns non-zero on CRC failure. Control fields are bitfield unions (`mk_ictrl`/`mk_sctrl`, `bk_ictrl`/`bk_sctrl`). ARQ is stop-and-wait with a 1-bit sequence number per destination. `send_until_acked()` busy-polls for ACKs until `ext::to_val` times out and gives up after `ext::max_timeouts` attempts. Before the first frame on a link, and after a give-up, the sender sends an `SF_RESET` S-frame carrying the next sequence number and waits for `SF_RESET_ACK`, so a receiver that missed a frame or restarted can't discard a new frame as a duplicate. ACKs are matched on sender, sequence number and type.
 
 **Network (`network.cc`).** The first payload byte is the packet type:
 - 0 = data `[type, src, dest, age, payload…]`
 - 1 = hello `[type, node]`
 - 2 = LSP `[type, node, seq, age, (neighbor, weight)…]`
 
-The initial graph comes from `topology.txt` through `File_parser`. `dijkistra()` builds the routing table `cls` (a vector of `{dest, weigh, nhop}`). LSPs are flooded to every node except the previous hop.
+The initial graph comes from `topology.txt` through `File_parser`. `dijkistra()` builds the routing table `cls` (a vector of `{dest, weigh, nhop}` in the order nodes were settled, so look entries up by `dest`, never index it by node id). Forwarding decrements a data packet's age and drops it when the age is used up, like the IP TTL. The hello/LSP code is dormant: nothing calls `create_hello()` or `create_lsp()` (see BACKLOG.md).
 
 **`topology.txt` format.** One row per node: `node  neigh weight  neigh weight … .`, where each row must end with a `.` token and `#` starts a comment. The leading node-id token is discarded, so **row order defines node ids**. `ext::total_nodes` (default 5) must match the row count.
 
@@ -71,5 +71,6 @@ The initial graph comes from `topology.txt` through `File_parser`. `dijkistra()`
 ## Conventions
 
 - **Debug macros (`debug.hh`).** `dbglog(x)`, `dbgcode(code)`, and the `fin()`/`fout()` function-trace macros compile to nothing unless `DEBUG_VERSION` is defined (both build systems define it) **and** the file has `#define DEBUG_THIS_FILE` before including `debug.hh`. Currently `link.cc`, `datalink.cc` and `network.cc` opt in, so they print a lot to stdout. Defining `FILE_DEBUG_VERSION` or `FILE_TRACE_VERSION` redirects the output to `program.debug.log` / `program.trace.log`.
-- **Errors (`error.hh`).** Wrap syscall return values with `check_errno(rv, "where")` (throws `Errno_exception` on -1) or `checkval_0(rv, Exception("where", "msg"))` (throws on non-zero). The `main`s catch `Errno_exception`, `int` and `char*`.
+- **Output (`log.hh`).** Never write to `cout` directly. Use `Out_line() << … << endl;`, which buffers one statement and writes it whole under a mutex, so threads can't splice their lines together; `dbglog` already uses it. Build a line in one statement, not a loop of `<<`s across statements. Pass binary data (frames, packets) through `printable()`, which shows unprintable bytes as `\xNN`.
+- **Errors (`error.hh`).** Wrap syscall return values with `check_errno(rv, "where")` (throws `Errno_exception` on -1) or `checkval_0(rv, Exception("where", "msg"))` (throws on non-zero). The `main`s catch `Errno_exception`, `int` and `char*` thrown on the main thread. The layer threads have no catch blocks, so each `main` installs `report_uncaught_exception()` with `set_terminate()`: an exception in any thread is printed and the process exits with `_exit(1)`. A new program must install it too.
 - **Headers are not self-contained.** For example, `link.hh` uses `string` without including it, and `externals.hh` (no include guard) and `debug.hh` include each other. Keep the existing pattern of including `debug.hh` first (after any `DEBUG_THIS_FILE`), or compilation breaks.

@@ -62,11 +62,11 @@ vector< list<linkinfo> > adjmat(File_parser fp)
   vector < list<linkinfo> > v;
   string s;
   
-  cout<<"\nCreating Adjacency Matrix."<<endl;
+  Out_line() <<"\nCreating Adjacency Matrix."<<endl;
   
   while(1)
     {
-      //      cout<<"Pehla"<<endl;
+      //      Out_line() <<"Pehla"<<endl;
       if((s=fp.get_next_token())!=string())
 	{
 	  while(1)
@@ -94,24 +94,24 @@ vector< list<linkinfo> > adjmat(File_parser fp)
 	  break;
 	}
     }
-  cout<<"Adjacency Matrix Created."<<endl;
+  Out_line() <<"Adjacency Matrix Created."<<endl;
   return v;
 }
 
 
 void printgraph()
 {
-  cout<<"\nPrint Link State Lists."<<endl;
+  Out_line() <<"\nPrint Link State Lists."<<endl;
   pthread_mutex_lock(&graph_mutex);
   for (unsigned i=0;i< v.size(); i++)
     {
-      cout << "Beginning list # " << i << endl;
+      Out_line() << "Beginning list # " << i << endl;
     list<linkinfo>::iterator li;
     li  = v[i].begin();
     while(li != v[i].end())
       {
-	cout << "Dest = " << li->neigh << endl;
-	cout << "Wieght = " << li->weigh << endl;
+	Out_line() << "Dest = " << li->neigh << endl;
+	Out_line() << "Wieght = " << li->weigh << endl;
 	li++;
       }
     }
@@ -127,7 +127,7 @@ vector< lsp > dijkistra(unsigned node)
 {
   // nobody should use graph during dijkistra
   pthread_mutex_lock(&graph_mutex);
-  cout<<"\nGenerating Routing table."<<endl;
+  Out_line() <<"\nGenerating Routing table."<<endl;
 
   const unsigned unreached = UINT_MAX;
   vector < unsigned > dist(v.size(),unreached);
@@ -165,7 +165,7 @@ vector< lsp > dijkistra(unsigned node)
       }
   }
 
-  cout<<"Routing table done."<<endl;
+  Out_line() <<"Routing table done."<<endl;
 
   pthread_mutex_unlock(&graph_mutex);
   return cls;
@@ -178,47 +178,50 @@ void my_state()
   pthread_mutex_lock(&cls_mutex);
   pthread_mutex_lock(&graph_mutex);
 
-  cout<<"\nChecking state of my node"<<endl;
+  Out_line() <<"\nChecking state of my node"<<endl;
   if(cls.size()==1)
     {
-      cout<<"Oops, I have lost my connection with all"<<endl;
+      Out_line() <<"Oops, I have lost my connection with all"<<endl;
     }
   else if(cls.size()==v.size())
     {
-      cout<<"MashAllah! I can reach all the nodes."<<endl;
+      Out_line() <<"MashAllah! I can reach all the nodes."<<endl;
     }
   else
     {
-      cout<<"Somebody Poor is Out of Order and Unreachable"<<endl;
+      Out_line() <<"Somebody Poor is Out of Order and Unreachable"<<endl;
     }
 
-  cout<<"My Routing Table is: "<<endl;
-  cout<<"\tDestiny\tWeight\tNext_hop"<<endl;
+  Out_line() <<"My Routing Table is: "<<endl;
+  Out_line() <<"\tDestiny\tWeight\tNext_hop"<<endl;
   for(unsigned k=0;k<cls.size();k++)
     {
-      cout<<"\t(  "<<cls[k].dest<<" \t  "
+      Out_line() <<"\t(  "<<cls[k].dest<<" \t  "
 	  <<cls[k].weigh<<" \t   "<<cls[k].nhop<<"   )"<<endl;
     }
   pthread_mutex_unlock(&graph_mutex);
   pthread_mutex_unlock(&cls_mutex);
 }
 
+// prints a packet: its 4 header bytes as numbers, then its payload
 void print_string(string s)
 {
-  cout<<"Packet: "<<endl;
-  for(unsigned i=0;i<s.size();i++)
+  Out_line line;
+  line<<"Packet: header";
+  for(unsigned i=0;i<s.size() && i<4;i++)
     {
-      if ( i<4 ){
-	cout<<(int)s[i] << "  ";
-      }
-      cout<<(char)s[i];
+      line<<" "<<(int)(unsigned char)s[i];
     }
-  cout<<endl;
+  if (s.size()>4)
+    {
+      line<<", payload: "<<printable(s.substr(4));
+    }
+  line<<endl;
 }
 
 void create_lsp(unsigned node,string &s,vector<list <linkinfo> > v,char &s_s_num)
 {
-  cout<<"\nCreating Lsp:"<<endl;
+  Out_line() <<"\nCreating Lsp:"<<endl;
   unsigned lsp_idx=2;
   unsigned age=16;
   list <linkinfo>::iterator li;
@@ -236,23 +239,23 @@ void create_lsp(unsigned node,string &s,vector<list <linkinfo> > v,char &s_s_num
   //  print_string(s);
 
   s_s_num++;
-  cout<<"Lsp succesfully created"<<endl;
+  Out_line() <<"Lsp succesfully created"<<endl;
 }
 
 void create_hello(unsigned node,string &s)
 {
   unsigned hello_idx=1;
-  cout<<"\nCreating the Hello Packet"<<endl;
+  Out_line() <<"\nCreating the Hello Packet"<<endl;
   s.push_back((char)hello_idx);
   s.push_back((char)node);
   
   //  print_string(s);
-  cout<<"Hello Packet Creation Successful\n";
+  Out_line() <<"Hello Packet Creation Successful\n";
 }
 
 void  create_data(unsigned node,string &s,string  payload,unsigned dest)
 {
-  cout<<"\nCreating Data Packet"<<endl;
+  Out_line() <<"\nCreating Data Packet"<<endl;
   unsigned data_idx=0;
   unsigned age=16;
   s.push_back((char)data_idx);
@@ -261,7 +264,7 @@ void  create_data(unsigned node,string &s,string  payload,unsigned dest)
   s.push_back((char)age);
 
   s+=payload;
-  cout<<"Data Packet Created"<<endl;
+  Out_line() <<"Data Packet Created"<<endl;
 }
 
 void  read_packet(unsigned &r_node,string &pack_recv,unsigned &r_dest,char &r_s_num,unsigned &type,string &pay_recv,string &r_lsp, unsigned &r_age)
@@ -289,25 +292,25 @@ void  read_packet(unsigned &r_node,string &pack_recv,unsigned &r_dest,char &r_s_
 void  con_strto_list(string r_lsp,list <linkinfo> &li)
 {
   unsigned i=0;
-  cout<<"Start The conversion"<<endl;
+  Out_line() <<"Start The conversion"<<endl;
   while(i<r_lsp.length()-1)
     {
-      cout<<"Lovely"<<endl;
+      Out_line() <<"Lovely"<<endl;
       li.push_back(linkinfo((unsigned)r_lsp[i],(unsigned)r_lsp[i+1]));
       i++;i++;
     }
   list <linkinfo>::iterator p;
   for(p=li.begin();p!=li.end();p++)
     {
-      cout<<p->neigh<<"\t "<<p->weigh<<"\t";
+      Out_line() <<p->neigh<<"\t "<<p->weigh<<"\t";
     }
-  cout<<"\nNew List being cretaed"<<endl;
+  Out_line() <<"\nNew List being cretaed"<<endl;
 
 }
 
 unsigned update_graph(string &all_seq,unsigned r_node, string r_lsp,char r_s_num)
 {
-  cout<<"Updating the Graph"<<endl;
+  Out_line() <<"Updating the Graph"<<endl;
   list <linkinfo> li;
   unsigned i=0;
   //print_string(all_seq);
@@ -322,9 +325,9 @@ unsigned update_graph(string &all_seq,unsigned r_node, string r_lsp,char r_s_num
       i=1;
     }
   if(i)
-    cout<<"Updation Done"<<endl;
+    Out_line() <<"Updation Done"<<endl;
   else
-    cout<<"No update required"<<endl;
+    Out_line() <<"No update required"<<endl;
 
   return i;
 }
@@ -333,12 +336,12 @@ void print_myqueue(queue <string> q)
 {
   string s;
   int b;
-  cout<<"\nPrinting the queue"<<endl;
+  Out_line() <<"\nPrinting the queue"<<endl;
   while(q.size()>0)
     {
       s=q.front();
       b=atoi(s.c_str());
-      cout<<s<<endl;
+      Out_line() <<s<<endl;
       q.pop();
     }
 }
@@ -356,7 +359,7 @@ void enq_pack(string r_data,char r_prevhop=0)
 	k++;
       if (k==cls.size())
 	{
-	  cout<<"No route to node "<<dest<<", dropping packet."<<endl;
+	  Out_line() <<"No route to node "<<dest<<", dropping packet."<<endl;
 	}
       else
 	{
@@ -453,15 +456,15 @@ void* network_recv_element(void*)
 	r_prevhop = r_packet.address;
 
 	read_packet(r_node,r_data,r_dest,r_s_num,type,r_pay,r_lsp,r_age);
-	cout<<"recv node is"<<r_node<<endl;
-	cout<<"type is:"<<type<<endl;
+	Out_line() <<"recv node is"<<r_node<<endl;
+	Out_line() <<"type is:"<<type<<endl;
 	if(type==0)
 	  {
-	    cout<<"Destination is :"<<r_dest<<endl;
-	    print_string(r_pay);
+	    Out_line() <<"Destination is :"<<r_dest<<endl;
+	    print_string(r_data);
 	    if(r_dest==(unsigned)ext::my_address)
 	      {
-		cout<<"Move to Application layer"<<endl;
+		Out_line() <<"Move to Application layer"<<endl;
 		pthread_mutex_lock(&nl_recv_queue_mutex);
 		nl_recv_queue.push(packet(r_node,r_pay));
 		pthread_mutex_unlock(&nl_recv_queue_mutex);
@@ -469,13 +472,26 @@ void* network_recv_element(void*)
 	      }
 	    else
 	      {
-		cout<<"Move the packet to the send side"<<endl;
-		enq_pack(r_data);
-	      }  
+		// age works like the IP TTL: one less per forward, and a
+		// packet that runs out is dropped, so a routing loop (nodes
+		// with different topology files, say) can't keep it forever
+		unsigned char age=(unsigned char)r_data[3];
+		if (age<=1)
+		  {
+		    Out_line() <<"Packet from node "<<r_node<<" to node "<<r_dest
+			       <<" ran out of age, dropping it."<<endl;
+		  }
+		else
+		  {
+		    r_data[3]=(char)(age-1);
+		    Out_line() <<"Move the packet to the send side"<<endl;
+		    enq_pack(r_data);
+		  }
+	      }
 	  }
 	if(type==2)
 	  {
-	    cout<<"Sequence Number is :"<<(unsigned)r_s_num<<endl;
+	    Out_line() <<"Sequence Number is :"<<(unsigned)r_s_num<<endl;
 	    //	  print_string(r_lsp);
 	    if(r_node!=(unsigned)ext::my_address && r_age>=0)
 	      {
@@ -489,7 +505,7 @@ void* network_recv_element(void*)
 		r_data[3]--;
 		if((unsigned)(r_data[3])>0)
 		  {
-		    cout<<"Move to send Queue"<<endl;
+		    Out_line() <<"Move to send Queue"<<endl;
 		    enq_pack(r_data,r_prevhop);
 		  }
 	      }
@@ -522,14 +538,14 @@ void* network_send_element(void*)
 	  nl_send_queue.pop();
 	  pthread_mutex_unlock(&nl_send_queue_mutex);
 
-	  cout << "Packet received." << endl
-	       << "Payload: " << p.frame <<endl
+	  Out_line() << "Packet received." << endl
+	       << "Payload: " << printable(p.frame) <<endl
 	       << "Address: " << (int)p.address <<endl;
 
 	  create_data(ext::my_address,my_data,p.frame,(unsigned char)p.address);
 	  
 	  enq_pack(my_data);
-	  cout << "Encapsulated packet: " << my_data << endl;
+	  Out_line() << "Encapsulated packet: " << printable(my_data) << endl;
 	  print_string(my_data);
 	  my_data.clear();
 	  pthread_mutex_lock(&nl_send_queue_mutex);
@@ -546,7 +562,7 @@ void* network_send_element(void*)
 void* network_layer(void* arg) 
 {
   fin("network_layer()");
-  cout << "Network layer active." << endl;
+  Out_line() << "Network layer active." << endl;
   pthread_t tid;
   
   // initialize layer

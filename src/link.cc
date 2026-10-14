@@ -91,7 +91,7 @@ void* link_send_element(void* arg)
       // push my address at back to enable prev_hop calculation at the receiver
       a_dgram.frame.push_back(ext::my_address);
       pthread_mutex_lock(&comm_socket_mutex);
-      dbglog("(*Sending frame*) "  << a_dgram.frame);
+      dbglog("(*Sending frame*) "  << printable(a_dgram.frame));
       comm_socket[address].send_dgram(a_dgram.frame.data(),a_dgram.frame.length());
       pthread_mutex_unlock(&comm_socket_mutex);
       pthread_mutex_lock(&link_send_queue_mutex);
@@ -154,7 +154,7 @@ void* link_recv_element(void* arg)
       }
       adgram.frame.push_back(str[i]);
     }
-    dbglog("LINK: [PacketReceived]: " << adgram.frame << " from " << (int)adgram.address) ;
+    dbglog("LINK: [PacketReceived]: " << printable(adgram.frame) << " from " << (int)adgram.address) ;
 
     pthread_mutex_lock(&link_recv_queue_mutex );
     link_recv_queue.push(adgram);

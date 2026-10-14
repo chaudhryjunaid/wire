@@ -98,10 +98,10 @@ src/datalink.o: src/datalink.cc src/debug.hh src/log.hh src/externals.hh \
  src/hdlcframe.hh
 src/debug.o: src/debug.cc src/debug.hh src/log.hh src/externals.hh \
  src/error.hh src/link.hh src/udp.hh src/threads.hh
-src/error.o: src/error.cc src/error.hh
+src/error.o: src/error.cc src/error.hh src/log.hh
 src/externals.o: src/externals.cc src/externals.hh src/debug.hh \
  src/log.hh src/error.hh src/link.hh src/udp.hh src/threads.hh
-src/fileparser.o: src/fileparser.cc src/fileparser.hh
+src/fileparser.o: src/fileparser.cc src/fileparser.hh src/log.hh
 src/hdlcframe.o: src/hdlcframe.cc src/debug.hh src/log.hh \
  src/externals.hh src/error.hh src/link.hh src/udp.hh src/threads.hh \
  src/hdlcframe.hh src/crc32.hh

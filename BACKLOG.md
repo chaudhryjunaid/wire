@@ -2,28 +2,6 @@
 
 Known bugs and improvements that are still open, roughly in priority order within each section. INTENT.md describes the goals these move toward; USAGE.md describes how things behave today.
 
-## Bugs
-
-### A duplicate node id aborts instead of reporting an error
-Starting a node whose id is already running fails with `terminate called after throwing an instance of 'Errno_exception'`. `bind()` fails in `Udpsocket::bind_socket()` (`src/udp.cc`), and `check_errno()` throws. The throw happens inside the link-layer thread, but only `main()` has `catch` blocks, so the runtime aborts the process. Every other exception thrown from a layer thread (socket, semaphore and mutex setup, `sendto`, `recvfrom`) ends the same way.
-
-**Fix:** catch exceptions at the top of each layer thread function (`link_layer`, `dlink_layer`, `network_layer` and their send/receive elements), print them with `Exception::printerr()`, and exit with a clear message, for example naming the port that is already in use.
-
-### Output from different threads is mixed together on one line
-Every layer's send and receive threads, plus `client2`'s delivery thread, write to `cout` with no coordination. Lines regularly get spliced together, for example `CLIENT: [data received from node ~^D…~ to 34]: three to one`. Now that `client2` is interactive, people read this output directly.
-
-**Fix:** route all output (the `dbglog` macro in `src/debug.hh`, plus the direct `cout` calls in `src/network.cc` and `src/client2.cc`) through one mutex-protected writer that emits whole lines. Printing frames as escaped text instead of raw bytes would also stop terminals from showing garbage.
-
-### One message can be silently lost after a hop gives up
-When a frame hits `max_timeouts` without an ACK, `dlink_send_element()` (`src/datalink.cc`) gives up, but the receiver may still be waiting for the old sequence bit. The next frame then carries the same bit the receiver treats as a duplicate: the receiver ACKs and discards it, and the sender believes it was delivered.
-
-**Fix:** keep the alternating bit in step after a give-up. Options include not advancing the sequence number for an abandoned frame, or adding a link reset exchange before the next frame.
-
-### Forwarded data packets never age out
-Data packets carry an age field (byte 3, initially 16) meant to work like the IP TTL, but `network_recv_element()` (`src/network.cc`) forwards data packets without decrementing it. With consistent routing tables nothing loops, but a bad topology file (for example, links listed on only one side) can make packets circulate forever.
-
-**Fix:** decrement the age on every forward and drop the packet, with a message, when it reaches 0. LSPs already do this.
-
 ## Missing features
 
 ### Derive the node count from the topology file
@@ -73,7 +51,7 @@ With `-std=c++23 -Wall -Wextra -pedantic`, these are left, none of them from too
 These turned up while working through `src/datalink.cc` and weren't in any earlier list.
 
 ### The ARQ wait loop spins a CPU core
-While waiting for an ACK, `dlink_send_element()` loops on `sem_trywait()` and the timeout check with no sleep, so each node with a frame in flight uses a full core for up to `max_timeouts` × 1 s. Use `sem_timedwait()` with the remaining timeout instead.
+While waiting for an ACK, `send_until_acked()` (`src/datalink.cc`) loops on `sem_trywait()` and the timeout check with no sleep, so each node with a frame in flight uses a full core for up to `max_timeouts` × 1 s. Use `sem_timedwait()` with the remaining timeout instead.
 
 ### One unresponsive neighbor delays every other link
 `dlink_send_element()` runs stop-and-wait for each neighbor in turn, in a single thread. While it retries a dead or lossy neighbor (up to about 5 s per frame), frames queued for every other neighbor wait. Running one send loop per link, or interleaving links, would keep a bad link from stalling the rest.

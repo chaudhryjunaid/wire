@@ -19,6 +19,7 @@ using namespace ext;
 int main(int argc, char* argv[])
 {
   fin("main");
+  set_terminate(report_uncaught_exception);	// report errors from the layer threads
   srand(time(NULL) ^ getpid());	// nodes started in the same second must not share fault patterns
 
 
@@ -76,7 +77,7 @@ int main(int argc, char* argv[])
 // /* The main program goes here. */
 
   if (argc<4){
-    cout << "usage: " << argv[0] << " <my_node_id> <dest_node_id> <total_nodes>" << endl;
+    Out_line() << "usage: " << argv[0] << " <my_node_id> <dest_node_id> <total_nodes>" << endl;
     exit(1);
   }
 
@@ -90,25 +91,25 @@ int main(int argc, char* argv[])
   ext::packet_err_wt = 15;
 
   try {
-    cout << "Entering try block..." << endl;
+    Out_line() << "Entering try block..." << endl;
     pthread_t tid; 
     if (argc>3){
       pthread_create(&tid,NULL,link_layer,(void*)(long)atoi(argv[1]));
     }else{
-      cout << "args" << endl;
+      Out_line() << "args" << endl;
       exit(1);
     }
     
     pthread_join(tid,NULL);
     pthread_create(&tid,NULL,dlink_layer,NULL);
     pthread_join(tid,NULL);
-    cout << "Datalink created" << endl;
+    Out_line() << "Datalink created" << endl;
 
     char x[200];
 
     while(1) {
       if (atoi(argv[1])==0){
-	cout<< "------------------- " << endl;
+	Out_line() << "------------------- " << endl;
 	cin.getline(x,200);
 	a.frame = x;
 	pthread_mutex_lock(&dlink_send_queue_mutex);
@@ -118,7 +119,7 @@ int main(int argc, char* argv[])
       }else{
 	sem_wait(&dlink_recv_queue_has_data); 
 	pthread_mutex_lock(&dlink_recv_queue_mutex);
-	cout << "*** CLIENT: [data received]: "
+	Out_line() << "*** CLIENT: [data received]: "
 	     << dlink_recv_queue.front().frame << endl;
 	dlink_recv_queue.pop();
 	pthread_mutex_unlock(&dlink_recv_queue_mutex);
@@ -132,17 +133,17 @@ int main(int argc, char* argv[])
     exit(1);
   }
   catch(int errno_thrown) {
-    cout << "syscall throwed errno " << errno_thrown << endl;
+    Out_line() << "syscall throwed errno " << errno_thrown << endl;
     perror("Client");
     exit(1);
   }
   catch(char* s){
-    cout << "string exception caught: " << s << endl;
+    Out_line() << "string exception caught: " << s << endl;
     herror("h_errno state");
     exit(1);
   }
   catch(...){
-    cout << "Caught default exception" << endl; 
+    Out_line() << "Caught default exception" << endl; 
     throw ;
   }
 
