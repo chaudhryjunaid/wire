@@ -36,9 +36,6 @@ Routes come only from the static topology file. The link-state code is there but
 ### Ignore the `client2` binary
 `.gitignore` covers `src/client` and `src/server`, but building `client2` in `src/` (as USAGE.md instructs) leaves an untracked binary. Add `src/client2`.
 
-### Update README.md
-README.md still says "As of yet, the project is not working". It does now work end to end; README could say so and link to USAGE.md and INTENT.md.
-
 ### Clean up the remaining compiler warnings
 With `-std=c++23 -Wall -Wextra -pedantic`, these are left, none of them from toolchain changes:
 - **Variable-length arrays:** `link`, `send_window` and `recv_window` in `src/datalink.cc` are sized by `ext::total_nodes`. This is a GCC extension, not standard C++, and clang rejects arrays like these of class types. Use `std::vector`.
